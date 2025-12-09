@@ -4,7 +4,7 @@ import { useUser } from '@clerk/clerk-react'
 import { isDevAccount, getDevPlan, DEV_FEATURES } from '../config/devConfig'
 import './PaymentModal.css'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 // Plan definitions with campaign limits
 const PLANS = [
@@ -211,7 +211,7 @@ function PaymentModal({ plan: initialPlan, onClose }) {
     }
 
     // Razorpay Payment Link
-    const RAZORPAY_LINK = 'https://razorpay.me/@voteflowai'
+    const RAZORPAY_LINK = import.meta.env.VITE_RAZORPAY_LINK
 
     // Open Razorpay payment link
     const handlePayment = () => {

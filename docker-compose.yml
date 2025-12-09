@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: voteflow_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./.voteflow_whatsapp:/root/.voteflow_whatsapp  # Persist WhatsApp session
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+    # shm_size is required for Chrome to run reliably in Docker
+    shm_size: '2gb'
