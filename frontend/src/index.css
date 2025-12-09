@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  /* VoteFlow AI - Gemini 3 Pro Aesthetic */
+
+  /* Core Palette - Deep Space & Neon */
+  --bg-space: #030712;
+  /* Ultra deep blue/black */
+  --bg-panel: #0f172a;
+  /* Dashboard panel bg */
+  --bg-surface: #1e293b;
+  /* Input/Card surface */
+
+  /* Brand Colors */
+  --brand-primary: #00f0ff;
+  /* Neon Cyan */
+  --brand-secondary: #7000ff;
+  /* Electric Violet */
+  --brand-success: #00ff9d;
+  /* Matrix Green */
+  --brand-alert: #ff0055;
+  /* Cyber Red */
+
+  /* Gradients */
+  --gradient-glow: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(112, 0, 255, 0.2) 100%);
+  --gradient-text: linear-gradient(90deg, #00f0ff 0%, #ffffff 50%, #7000ff 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+
+  /* Text */
+  --text-bright: #ffffff;
+  --text-dim: #94a3b8;
+  --text-mono: #64748b;
+
+  /* Effects */
+  --glow-sm: 0 0 10px rgba(0, 240, 255, 0.3);
+  --glow-md: 0 0 20px rgba(0, 240, 255, 0.4);
+  --border-neon: 1px solid rgba(0, 240, 255, 0.3);
+  --border-dim: 1px solid rgba(148, 163, 184, 0.1);
+  --glass-panel: rgba(15, 23, 42, 0.6);
+  --backdrop-blur: blur(12px);
+
+  /* Spacing */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-space);
+  color: var(--text-bright);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+code,
+pre,
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-space);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-primary);
+}
+
+/* Utilities */
+.text-gradient {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glow-box {
+  box-shadow: var(--glow-sm);
+  border: var(--border-neon);
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.btn {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--brand-primary);
+  color: var(--bg-space);
+  box-shadow: var(--glow-sm);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-md);
+  background: #33f3ff;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: var(--border-neon);
+  color: var(--brand-primary);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 240, 255, 0.1);
+}
+
+.glass-panel {
+  background: var(--glass-panel);
+  backdrop-filter: var(--backdrop-blur);
+  border: var(--border-dim);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}

@@ -1,0 +1,9 @@
+{
+    "name": "voteflow-backend",
+    "version": "1.0.0",
+    "description": "VoteFlow AI Backend Server",
+    "scripts": {
+        "start": "uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+        "install": "pip install -r requirements.txt"
+    }
+}
