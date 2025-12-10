@@ -30,19 +30,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-origins = [
-    "https://www.techmans.me",
-    "https://www.techmans.me/",
-    "https://techmans.me",
-    "https://techmans.me/",
-    "https://www.techmans.me/dashboard",
-    "https://www.techmans.me/dashboard/"
-]
-
 # CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    # allow_origins=origins,  <-- Replaced with regex below
+    allow_origin_regex=".*",  # Allow ALL origins (Nuclear option for debugging)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
