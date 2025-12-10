@@ -5,10 +5,10 @@ import './index.css'
 import App from './App.jsx'
 
 // Import Clerk Publishable Key
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error('Missing Clerk Publishable Key - add VITE_CLERK_PUBLISHABLE_KEY to .env')
+  throw new Error('Missing Clerk Publishable Key - add VITE_CLERK_PUBLISHABLE to .env')
 }
 
 createRoot(document.getElementById('root')).render(
