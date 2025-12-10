@@ -151,6 +151,12 @@ OUTPUT (just the message):"""
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--disable-popup-blocking")
         
+        # Docker-compatible options
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--headless=new")  # Run headless on server
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        
         # Use user data dir to persist WhatsApp session
         user_data_dir = os.path.join(os.path.expanduser("~"), ".voteflow_whatsapp")
         chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
