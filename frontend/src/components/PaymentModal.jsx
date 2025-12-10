@@ -4,7 +4,7 @@ import { useUser } from '@clerk/clerk-react'
 import { isDevAccount, getDevPlan, DEV_FEATURES } from '../config/devConfig'
 import './PaymentModal.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE
 
 // Plan definitions with campaign limits
 const PLANS = [
