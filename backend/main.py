@@ -33,7 +33,7 @@ app = FastAPI(
 # CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://vote-flow-ai.vercel.app/", "https://vote-flow-ai-vijay-krishna-rachamallas-projects.vercel.app/"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
