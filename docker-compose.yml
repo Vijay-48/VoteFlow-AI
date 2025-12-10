@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -8,9 +8,9 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/uploads:/app/uploads
-      - ./.voteflow_whatsapp:/root/.voteflow_whatsapp  # Persist WhatsApp session
+      - ./.voteflow_whatsapp:/root/.voteflow_whatsapp # Persist WhatsApp session
     env_file:
       - ./backend/.env
-    restart: unless-stopped
+    restart: always
     # shm_size is required for Chrome to run reliably in Docker
-    shm_size: '2gb'
+    shm_size: "2gb"
