@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import './Dashboard.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
-const WS_BASE = import.meta.env.VITE_WS_BASE || 'ws://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE
+const WS_BASE = import.meta.env.VITE_WS_BASE
 
 function Dashboard() {
     // State
