@@ -31,8 +31,12 @@ app = FastAPI(
 )
 
 origins = [
-    "https://vote-flow-ai.vercel.app/",
-    "https://vote-flow-ai-vijay-krishna-rachamallas-projects.vercel.app/"
+    "https://www.techmans.me",
+    "https://www.techmans.me/",
+    "https://techmans.me",
+    "https://techmans.me/",
+    "https://www.techmans.me/dashboard",
+    "https://www.techmans.me/dashboard/"
 ]
 
 # CORS for React frontend
