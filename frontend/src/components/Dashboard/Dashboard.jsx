@@ -15,6 +15,8 @@ function Dashboard() {
     const [messageTemplate, setMessageTemplate] = useState('')
     const [isExtracting, setIsExtracting] = useState(false)
     const [backendStatus, setBackendStatus] = useState('checking')
+    const [qrCodeUrl, setQrCodeUrl] = useState(null)
+    const [showQrModal, setShowQrModal] = useState(false)
 
     // Refs
     const wsRef = useRef(null)
@@ -48,6 +50,10 @@ function Dashboard() {
     }
 
     const addLog = useCallback((message, type = 'info') => {
+        // Filter out stacktrace/hex address spam
+        if (message.includes('<unknown>') || message.includes('0x') || message.includes('Stacktrace')) {
+            return // Skip noisy logs
+        }
         const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false })
         setLogs(prev => [...prev.slice(-50), { id: Date.now(), timestamp, message, type }])
     }, [])
@@ -77,8 +83,15 @@ function Dashboard() {
             } else if (data.type === 'error') {
                 addLog(data.message, 'error')
             } else if (data.type === 'qr_waiting') {
-                addLog('⚠️ Check browser - Scan WhatsApp QR code', 'warning')
+                addLog('⚠️ Waiting for WhatsApp QR scan...', 'warning')
+            } else if (data.type === 'qr_ready') {
+                // Fetch QR code image and display it
+                setQrCodeUrl(`${API_BASE}/api/whatsapp/qr?t=${Date.now()}`)
+                setShowQrModal(true)
+                addLog('📱 QR Code ready - Scan with WhatsApp!', 'info')
             } else if (data.type === 'whatsapp_ready') {
+                setShowQrModal(false)
+                setQrCodeUrl(null)
                 addLog('✅ WhatsApp connected!', 'success')
             }
         }
@@ -270,6 +283,36 @@ function Dashboard() {
 
     return (
         <div className="dashboard-container">
+            {/* QR Code Modal */}
+            {showQrModal && qrCodeUrl && (
+                <div className="qr-modal-overlay">
+                    <div className="qr-modal">
+                        <h2>📱 Scan WhatsApp QR Code</h2>
+                        <p>Open WhatsApp on your phone → Settings → Linked Devices → Link a Device</p>
+                        <img
+                            src={qrCodeUrl}
+                            alt="WhatsApp QR Code"
+                            className="qr-code-image"
+                            onError={() => addLog('Failed to load QR image', 'error')}
+                        />
+                        <div className="qr-modal-actions">
+                            <button
+                                onClick={() => setQrCodeUrl(`${API_BASE}/api/whatsapp/qr?t=${Date.now()}`)}
+                                className="btn-refresh"
+                            >
+                                🔄 Refresh QR
+                            </button>
+                            <button
+                                onClick={() => setShowQrModal(false)}
+                                className="btn-close"
+                            >
+                                ✕ Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="dashboard-header">
                 <div className="header-title">
@@ -292,29 +335,9 @@ function Dashboard() {
             <div className="dashboard-grid">
                 {/* Left: Config Panel */}
                 <div className="dashboard-col-left">
-                    {/* PDF Upload Section (AI Extraction) */}
+                    {/* Unified Upload Section */}
                     <div className="glass-panel config-card">
-                        <h3>📂 Voter List (AI Extract)</h3>
-                        <input
-                            type="file"
-                            accept=".pdf"
-                            ref={fileInputRef}
-                            onChange={handleFileUpload}
-                            style={{ display: 'none' }}
-                        />
-                        <button
-                            className="btn btn-secondary upload-btn"
-                            onClick={() => fileInputRef.current.click()}
-                            disabled={isExtracting}
-                        >
-                            {isExtracting ? '⏳ Extracting...' : '📤 UPLOAD PDF'}
-                        </button>
-                        <p className="upload-hint">Uses AI to extract handwritten phone numbers</p>
-                    </div>
-
-                    {/* Quick Upload Section (All file types) */}
-                    <div className="glass-panel config-card">
-                        <h3>⚡ Quick Upload</h3>
+                        <h3>📂 Upload Voter List</h3>
                         <input
                             type="file"
                             accept=".pdf,.xlsx,.xls,.csv"
@@ -323,12 +346,13 @@ function Dashboard() {
                             style={{ display: 'none' }}
                         />
                         <button
-                            className="btn btn-primary upload-btn quick-upload-btn"
+                            className="btn btn-primary upload-btn"
                             onClick={() => quickUploadRef.current.click()}
+                            disabled={isExtracting}
                         >
-                            📊 UPLOAD FILE
+                            {isExtracting ? '⏳ Processing...' : '📤 UPLOAD FILE'}
                         </button>
-                        <p className="upload-hint">PDF, Excel, or CSV with NAME &amp; PHONE</p>
+                        <p className="upload-hint">PDF (AI extracts handwritten numbers), Excel, or CSV</p>
                     </div>
 
                     {/* Loaded Voters Count */}
@@ -393,18 +417,24 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* Right: Message Template */}
+                {/* Right: Message Input */}
                 <div className="dashboard-col-right">
                     <div className="glass-panel message-card">
-                        <h3>📝 Message Template</h3>
+                        <h3>📝 Campaign Message</h3>
                         <textarea
                             className="message-input"
-                            placeholder="Enter your campaign message here..."
+                            placeholder="Type your message here... (Press Ctrl+Enter to set)"
                             value={messageTemplate}
                             onChange={(e) => setMessageTemplate(e.target.value)}
-                            rows={10}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.ctrlKey) {
+                                    e.preventDefault()
+                                    addLog(`✅ Message template set: "${messageTemplate.substring(0, 50)}..."`, 'success')
+                                }
+                            }}
+                            rows={8}
                         />
-                        <p className="hint">Leave blank to use default Telugu message</p>
+                        <p className="hint">Press Ctrl+Enter to confirm message</p>
                     </div>
                 </div>
             </div>

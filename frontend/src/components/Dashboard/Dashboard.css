@@ -364,3 +364,97 @@
         min-height: 400px;
     }
 }
+
+/* QR Code Modal Styles */
+.qr-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.qr-modal {
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid rgba(0, 255, 157, 0.3);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.qr-modal h2 {
+    color: var(--brand-success, #00ff9d);
+    margin-bottom: 12px;
+    font-size: 1.5rem;
+}
+
+.qr-modal p {
+    color: var(--text-secondary, #8a8a9a);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.qr-code-image {
+    width: 280px;
+    height: 280px;
+    border-radius: 8px;
+    background: white;
+    padding: 8px;
+    margin-bottom: 20px;
+}
+
+.qr-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn-refresh {
+    background: linear-gradient(135deg, #00d4ff, #00ff9d);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-refresh:hover {
+    transform: scale(1.05);
+}
+
+.btn-close {
+    background: rgba(255, 0, 85, 0.2);
+    color: var(--brand-alert, #ff0055);
+    border: 1px solid rgba(255, 0, 85, 0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+    background: rgba(255, 0, 85, 0.3);
+}
