@@ -147,35 +147,47 @@ OUTPUT (just the message):"""
     def _init_browser(self):
         """Initialize Chrome browser for WhatsApp Web (the sandbox)."""
         chrome_options = Options()
-        chrome_options.add_argument("--start-maximized")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--disable-popup-blocking")
         
         # Docker/Server configuration
         is_headless = os.getenv("CHROME_HEADLESS", "false").lower() == "true"
         
         if is_headless:
             print("[INFO] 🖥️ Running Chrome in HEADLESS mode (Server/Docker)")
+            
+            # Required safe flags for running Chrome inside Docker
+            chrome_options.add_argument("--headless=new")  # Modern headless mode
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--headless=new")
-            chrome_options.add_argument("--remote-debugging-port=9222")
             chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-software-rasterizer")
+            chrome_options.add_argument("--disable-logging")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--window-size=1366,768")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--disable-popup-blocking")
             
             # Use Chromium binary from Docker (set via ENV in Dockerfile)
             chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
             if os.path.exists(chrome_bin):
                 chrome_options.binary_location = chrome_bin
                 print(f"[INFO] Using Chrome binary: {chrome_bin}")
+            
+            # Persistent profile directory (mounted volume in Docker)
+            user_data_dir = os.getenv("CHROME_USER_DATA_DIR", "/data/chrome-profile")
+            chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+            print(f"[INFO] Using Chrome profile: {user_data_dir}")
         else:
             print("[INFO] 🖥️ Running Chrome in GUI mode (Local)")
+            chrome_options.add_argument("--start-maximized")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--disable-popup-blocking")
             chrome_options.add_experimental_option("detach", True)
+            
+            # Local user data dir
+            user_data_dir = os.path.join(os.path.expanduser("~"), ".voteflow_whatsapp")
+            chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
 
-        # Use user data dir to persist WhatsApp session
-        user_data_dir = os.path.join(os.path.expanduser("~"), ".voteflow_whatsapp")
-        chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
-        
         try:
             # Use ChromeDriver from Docker if available
             chromedriver_path = os.getenv("CHROMEDRIVER_PATH", None)
@@ -185,6 +197,7 @@ OUTPUT (just the message):"""
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
             else:
                 self.driver = webdriver.Chrome(options=chrome_options)
+            print("[INFO] ✅ Chrome started successfully!")
         except Exception as e:
             print(f"[ERROR] Failed to start Chrome: {e}")
             print("Ensure Chrome is installed and CHROME_HEADLESS is set correctly.")

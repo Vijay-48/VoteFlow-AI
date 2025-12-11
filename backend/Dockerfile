@@ -16,13 +16,31 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Google Chrome
-# Install Chromium and verify versions
-RUN apt-get update && apt-get install -y \
+# Install Chromium, ChromeDriver, and required OS libraries for headless mode
+RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libasound2 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    fonts-liberation \
+    ca-certificates \
+    dbus \
     && rm -rf /var/lib/apt/lists/* \
     && chromium --version \
     && chromedriver --version
+
+# Create Chrome profile directory
+RUN mkdir -p /data/chrome-profile && chmod 777 /data/chrome-profile
 
 # Set Chrome options environment variables
 ENV CHROME_BIN=/usr/bin/chromium
