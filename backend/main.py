@@ -542,6 +542,25 @@ async def whatsapp_status():
         ]
     }
 
+@app.get("/api/whatsapp/qr")
+async def get_whatsapp_qr():
+    """Get the WhatsApp QR code screenshot for remote scanning."""
+    from fastapi.responses import FileResponse
+    
+    qr_path = os.path.join(os.path.dirname(__file__), "uploads", "qr_code.png")
+    
+    if os.path.exists(qr_path):
+        return FileResponse(
+            qr_path, 
+            media_type="image/png",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
+    else:
+        raise HTTPException(
+            status_code=404, 
+            detail="QR code not available. Start a campaign first to generate the QR code."
+        )
+
 # =============================================================================
 # Entry Point
 # =============================================================================

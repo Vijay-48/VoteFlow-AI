@@ -186,6 +186,16 @@ OUTPUT (just the message):"""
         await self._log("Waiting for WhatsApp to connect (scan QR if needed)...", "system")
         await self.broadcast({"type": "qr_waiting", "message": "Please scan QR code if prompted"})
         
+        # Save QR screenshot for remote viewing
+        try:
+            await asyncio.sleep(5)  # Wait for QR to render
+            qr_path = os.path.join(os.path.dirname(__file__), "uploads", "qr_code.png")
+            self.driver.save_screenshot(qr_path)
+            await self._log("📸 QR code screenshot saved. Check /api/whatsapp/qr", "info")
+            await self.broadcast({"type": "qr_ready", "message": "QR code available at /api/whatsapp/qr"})
+        except Exception as e:
+            await self._log(f"⚠️ Could not save QR screenshot: {e}", "warning")
+        
         # Wait for the search box to appear (indicates logged in)
         try:
             WebDriverWait(self.driver, 120).until(
