@@ -151,17 +151,31 @@ OUTPUT (just the message):"""
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--disable-popup-blocking")
         
-        # Docker-compatible options
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--headless=new")  # Run headless on server
-        chrome_options.add_argument("--remote-debugging-port=9222")
+        # Docker/Server configuration
+        is_headless = os.getenv("CHROME_HEADLESS", "false").lower() == "true"
         
+        if is_headless:
+            print("[INFO] 🖥️ Running Chrome in HEADLESS mode (Server/Docker)")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--headless=new")  # Run headless on server
+            chrome_options.add_argument("--remote-debugging-port=9222")
+        else:
+            print("[INFO] 🖥️ Running Chrome in GUI mode (Local)")
+            # Optional: Keep window open after script finishes
+            chrome_options.add_experimental_option("detach", True)
+
         # Use user data dir to persist WhatsApp session
         user_data_dir = os.path.join(os.path.expanduser("~"), ".voteflow_whatsapp")
         chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
         
-        self.driver = webdriver.Chrome(options=chrome_options)
+        try:
+            self.driver = webdriver.Chrome(options=chrome_options)
+        except Exception as e:
+            print(f"[ERROR] Failed to start Chrome: {e}")
+            print("Ensure Chrome is installed and CHROME_HEADLESS is set correctly.")
+            raise e
+            
         return self.driver
     
     async def _wait_for_whatsapp_ready(self):
