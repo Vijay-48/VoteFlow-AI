@@ -158,11 +158,18 @@ OUTPUT (just the message):"""
             print("[INFO] 🖥️ Running Chrome in HEADLESS mode (Server/Docker)")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--headless=new")  # Run headless on server
+            chrome_options.add_argument("--headless=new")
             chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            
+            # Use Chromium binary from Docker (set via ENV in Dockerfile)
+            chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+            if os.path.exists(chrome_bin):
+                chrome_options.binary_location = chrome_bin
+                print(f"[INFO] Using Chrome binary: {chrome_bin}")
         else:
             print("[INFO] 🖥️ Running Chrome in GUI mode (Local)")
-            # Optional: Keep window open after script finishes
             chrome_options.add_experimental_option("detach", True)
 
         # Use user data dir to persist WhatsApp session
@@ -170,7 +177,14 @@ OUTPUT (just the message):"""
         chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
         
         try:
-            self.driver = webdriver.Chrome(options=chrome_options)
+            # Use ChromeDriver from Docker if available
+            chromedriver_path = os.getenv("CHROMEDRIVER_PATH", None)
+            if chromedriver_path and os.path.exists(chromedriver_path):
+                print(f"[INFO] Using ChromeDriver: {chromedriver_path}")
+                service = Service(executable_path=chromedriver_path)
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            else:
+                self.driver = webdriver.Chrome(options=chrome_options)
         except Exception as e:
             print(f"[ERROR] Failed to start Chrome: {e}")
             print("Ensure Chrome is installed and CHROME_HEADLESS is set correctly.")
