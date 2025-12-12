@@ -163,9 +163,12 @@ OUTPUT (just the message):"""
             chrome_options.add_argument("--disable-software-rasterizer")
             chrome_options.add_argument("--disable-logging")
             chrome_options.add_argument("--remote-debugging-port=9222")
-            chrome_options.add_argument("--window-size=1366,768")
+            chrome_options.add_argument("--window-size=1920,1080")
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--disable-popup-blocking")
+            
+            # Spoof User-Agent to bypass WhatsApp browser detection
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             
             # Use Chromium binary from Docker (set via ENV in Dockerfile)
             chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
