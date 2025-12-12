@@ -218,11 +218,17 @@ OUTPUT (just the message):"""
         
         # Save QR screenshot for remote viewing
         try:
-            await asyncio.sleep(5)  # Wait for QR to render
+            await asyncio.sleep(10)  # Wait for QR to render (increased from 5s)
             qr_path = os.path.join(os.path.dirname(__file__), "uploads", "qr_code.png")
             self.driver.save_screenshot(qr_path)
             await self._log("📸 QR code screenshot saved. Check /api/whatsapp/qr", "info")
             await self.broadcast({"type": "qr_ready", "message": "QR code available at /api/whatsapp/qr"})
+            
+            # Take additional screenshots as QR may update
+            for i in range(3):
+                await asyncio.sleep(5)
+                self.driver.save_screenshot(qr_path)
+                await self.broadcast({"type": "qr_updated", "message": "QR refreshed"})
         except Exception as e:
             await self._log(f"⚠️ Could not save QR screenshot: {e}", "warning")
         
