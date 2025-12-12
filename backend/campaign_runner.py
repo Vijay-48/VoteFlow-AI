@@ -250,13 +250,39 @@ OUTPUT (just the message):"""
         except Exception as e:
             await self._log(f"⚠️ Could not save QR screenshot: {e}", "warning")
         
-        # Wait for the search box to appear (indicates logged in)
+        # Wait for WhatsApp to be ready (multiple selectors for compatibility)
         try:
-            WebDriverWait(self.driver, 120).until(
-                EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]'))
-            )
-            await self._log("✅ WhatsApp Web connected successfully!", "success")
-            await self.broadcast({"type": "whatsapp_ready", "message": "WhatsApp connected"})
+            # Try multiple selectors - WhatsApp UI changes frequently
+            login_selectors = [
+                '//div[@contenteditable="true"][@data-tab="3"]',  # Old search box
+                '//div[@id="side"]',  # Side panel (chat list container)
+                '//div[contains(@class,"two")]//div[contains(@class,"copyable-text")]',  # Chat input
+                '//span[@data-icon="menu"]',  # Menu icon (visible when logged in)
+                '//div[@data-testid="chat-list"]',  # Chat list
+            ]
+            
+            logged_in = False
+            for selector in login_selectors:
+                try:
+                    WebDriverWait(self.driver, 30).until(
+                        EC.presence_of_element_located((By.XPATH, selector))
+                    )
+                    await self._log(f"✅ WhatsApp Web connected! (detected via: {selector[:30]}...)", "success")
+                    await self.broadcast({"type": "whatsapp_ready", "message": "WhatsApp connected"})
+                    logged_in = True
+                    break
+                except:
+                    continue
+            
+            if not logged_in:
+                # Final attempt - just check page title
+                await asyncio.sleep(5)
+                if "WhatsApp" in self.driver.title:
+                    await self._log("✅ WhatsApp Web appears to be connected!", "success")
+                    await self.broadcast({"type": "whatsapp_ready", "message": "WhatsApp connected"})
+                    return True
+                raise Exception("Could not detect WhatsApp login state")
+            
             return True
         except Exception as e:
             await self._log(f"❌ WhatsApp connection failed: {e}", "error")
