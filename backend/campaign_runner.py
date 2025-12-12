@@ -167,6 +167,14 @@ OUTPUT (just the message):"""
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--disable-popup-blocking")
             
+            # Anti-headless detection flags
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_argument("--disable-infobars")
+            chrome_options.add_argument("--enable-features=NetworkService,NetworkServiceInProcess")
+            chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option("useAutomationExtension", False)
+            
             # Spoof User-Agent to bypass WhatsApp browser detection
             chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             
