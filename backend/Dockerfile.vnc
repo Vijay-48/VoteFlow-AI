@@ -1,0 +1,46 @@
+# VNC-enabled Chrome container for WhatsApp QR scanning
+# Based on selenium/standalone-chrome with noVNC for web access
+
+FROM selenium/standalone-chrome:latest
+
+# Switch to root for installations
+USER root
+
+# Install noVNC and websockify
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    novnc \
+    websockify \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /data/chrome-profiles /var/log/supervisor
+
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+    # Start VNC server\n\
+    Xvfb :99 -screen 0 1920x1080x24 &\n\
+    export DISPLAY=:99\n\
+    \n\
+    # Start noVNC\n\
+    websockify --web=/usr/share/novnc 6080 localhost:5900 &\n\
+    \n\
+    # Keep container running\n\
+    tail -f /dev/null\n\
+    ' > /start-vnc.sh && chmod +x /start-vnc.sh
+
+# Environment variables
+ENV DISPLAY=:99
+ENV CHROME_PROFILES_BASE=/data/chrome-profiles
+
+# Expose noVNC web port
+EXPOSE 6080
+
+# Switch back to selenium user
+USER seluser
+
+# Start services
+CMD ["/start-vnc.sh"]

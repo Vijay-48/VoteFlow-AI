@@ -3,9 +3,10 @@ VoteFlow AI - Backend Server
 ============================
 FastAPI backend for campaign execution with WebSocket support.
 Includes security measures: input validation, rate limiting, sanitization.
+Multi-user support with payment tracking and quota management.
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, BackgroundTasks, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, validator
@@ -19,16 +20,39 @@ from typing import Dict, List, Optional
 import uuid
 from collections import defaultdict
 import time
+import razorpay
+import hmac
+import hashlib
 
 # Import our modules
 from campaign_runner import CampaignRunner
 from pdf_extractor import PDFExtractor
+from database import (
+    init_db, get_db, get_user_by_clerk_id, get_user_quota, 
+    decrement_quota, add_quota, get_user_chrome_profile,
+    PACKAGE_LIMITS, PackageType, User, Payment, PaymentStatus, SessionLocal
+)
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# Razorpay client
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)) if RAZORPAY_KEY_ID else None
 
 app = FastAPI(
     title="VoteFlow AI Backend",
-    description="Campaign execution and PDF extraction API",
-    version="1.0.0"
+    description="Campaign execution and PDF extraction API with multi-user support",
+    version="2.0.0"
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    print("[DB] ✅ Database initialized")
 
 # CORS for React frontend
 app.add_middleware(
@@ -101,6 +125,7 @@ def validate_phone_number(phone: str) -> bool:
 # =============================================================================
 
 class CampaignStartRequest(BaseModel):
+    user_id: Optional[str] = None  # Clerk user ID for quota and per-user profile
     message_template: Optional[str] = None
     voters_data: Optional[List[dict]] = None
     excel_file: Optional[str] = None
@@ -430,12 +455,29 @@ async def start_campaign(
                 if validate_phone_number(sanitized_voter['MOBILE']):
                     sanitized_voters.append(sanitized_voter)
         
+        # Check user quota if user_id is provided
+        user_quota = 0
+        if body.user_id:
+            db = SessionLocal()
+            try:
+                quota_info = get_user_quota(db, body.user_id)
+                user_quota = quota_info.get('messages_remaining', 0)
+                if user_quota <= 0:
+                    raise HTTPException(status_code=403, detail="No messages remaining. Please purchase a package.")
+                # Limit voters to quota
+                if len(sanitized_voters) > user_quota:
+                    sanitized_voters = sanitized_voters[:user_quota]
+            finally:
+                db.close()
+        
         runner = CampaignRunner(
             campaign_id=campaign_id,
+            user_id=body.user_id,
             message_template=body.message_template,
             broadcast_callback=lambda msg: asyncio.create_task(
                 manager.broadcast(campaign_id, msg)
-            )
+            ),
+            quota_remaining=user_quota
         )
         
         active_campaigns[campaign_id] = runner
@@ -561,6 +603,239 @@ async def get_whatsapp_qr():
             detail="QR code not available. Start a campaign first to generate the QR code."
         )
 
+@app.get("/api/whatsapp/vnc-url/{user_id}")
+async def get_vnc_url(user_id: str, request: Request):
+    """Get the noVNC URL for a user to link their WhatsApp account."""
+    # Get the host from the request
+    host = request.headers.get("host", "localhost")
+    base_url = host.split(":")[0]  # Remove port if present
+    
+    # VNC port (mapped in docker-compose)
+    vnc_port = 6080
+    
+    # For production, use the actual domain
+    if "api.techmans.me" in host:
+        vnc_url = f"https://api.techmans.me:{vnc_port}/vnc.html?autoconnect=true"
+    else:
+        vnc_url = f"http://{base_url}:{vnc_port}/vnc.html?autoconnect=true"
+    
+    return {
+        "success": True,
+        "vnc_url": vnc_url,
+        "user_id": user_id,
+        "instructions": [
+            "1. Click the VNC URL to open Chrome in your browser",
+            "2. Navigate to web.whatsapp.com in the Chrome window",
+            "3. Scan the QR code with your phone",
+            "4. Once connected, close the VNC window"
+        ]
+    }
+
+@app.get("/api/whatsapp/status/{user_id}")
+async def get_whatsapp_status(user_id: str):
+    """Check if a user has linked their WhatsApp account."""
+    db = SessionLocal()
+    try:
+        user = get_user_by_clerk_id(db, user_id)
+        
+        # Check if profile directory exists and has session data
+        profile_path = get_user_chrome_profile(user_id)
+        session_file = os.path.join(profile_path, "Default", "IndexedDB")
+        has_session = os.path.exists(session_file)
+        
+        return {
+            "success": True,
+            "user_id": user_id,
+            "whatsapp_linked": user.whatsapp_linked or has_session,
+            "whatsapp_phone": user.whatsapp_phone
+        }
+    finally:
+        db.close()
+
+@app.post("/api/whatsapp/mark-linked/{user_id}")
+async def mark_whatsapp_linked(user_id: str, phone: Optional[str] = None):
+    """Mark a user's WhatsApp as linked (called after successful QR scan)."""
+    db = SessionLocal()
+    try:
+        user = get_user_by_clerk_id(db, user_id)
+        user.whatsapp_linked = True
+        if phone:
+            user.whatsapp_phone = phone
+        user.chrome_profile_path = get_user_chrome_profile(user_id)
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "WhatsApp linked successfully",
+            "user_id": user_id
+        }
+    finally:
+        db.close()
+
+# =============================================================================
+# Payment API Endpoints
+# =============================================================================
+
+class CreateOrderRequest(BaseModel):
+    """Request model for creating a payment order."""
+    user_id: str  # Clerk user ID
+    package_type: str  # starter, growth, enterprise
+    email: Optional[str] = None
+    name: Optional[str] = None
+
+class VerifyPaymentRequest(BaseModel):
+    """Request model for verifying payment."""
+    user_id: str
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+@app.post("/api/payment/create-order")
+async def create_payment_order(request: CreateOrderRequest):
+    """Create a Razorpay order for package purchase."""
+    if not razorpay_client:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    # Validate package type
+    try:
+        pkg = PackageType(request.package_type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid package type: {request.package_type}")
+    
+    package_info = PACKAGE_LIMITS[pkg]
+    amount_paise = int(package_info["price"] * 100)  # Razorpay uses paise
+    
+    try:
+        # Create Razorpay order
+        order_data = {
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": f"order_{uuid.uuid4().hex[:8]}",
+            "notes": {
+                "user_id": request.user_id,
+                "package_type": request.package_type,
+                "messages": package_info["messages"]
+            }
+        }
+        order = razorpay_client.order.create(data=order_data)
+        
+        # Save order to database
+        db = SessionLocal()
+        try:
+            user = get_user_by_clerk_id(db, request.user_id)
+            if request.email:
+                user.email = request.email
+            if request.name:
+                user.name = request.name
+            
+            payment = Payment(
+                user_id=user.id,
+                amount=package_info["price"],
+                package_type=request.package_type,
+                messages_purchased=package_info["messages"],
+                razorpay_order_id=order["id"],
+                status=PaymentStatus.PENDING.value
+            )
+            db.add(payment)
+            db.commit()
+        finally:
+            db.close()
+        
+        return {
+            "success": True,
+            "order_id": order["id"],
+            "amount": package_info["price"],
+            "currency": "INR",
+            "key_id": RAZORPAY_KEY_ID,
+            "package": {
+                "type": request.package_type,
+                "messages": package_info["messages"]
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")
+
+@app.post("/api/payment/verify")
+async def verify_payment(request: VerifyPaymentRequest):
+    """Verify Razorpay payment and add quota to user."""
+    if not razorpay_client:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    # Verify signature
+    try:
+        params_dict = {
+            "razorpay_order_id": request.razorpay_order_id,
+            "razorpay_payment_id": request.razorpay_payment_id,
+            "razorpay_signature": request.razorpay_signature
+        }
+        razorpay_client.utility.verify_payment_signature(params_dict)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Payment verification failed")
+    
+    # Update database
+    db = SessionLocal()
+    try:
+        payment = db.query(Payment).filter(Payment.razorpay_order_id == request.razorpay_order_id).first()
+        if not payment:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        payment.razorpay_payment_id = request.razorpay_payment_id
+        payment.razorpay_signature = request.razorpay_signature
+        payment.status = PaymentStatus.COMPLETED.value
+        payment.completed_at = datetime.utcnow()
+        
+        # Add quota to user
+        user = db.query(User).filter(User.id == payment.user_id).first()
+        user.messages_remaining += payment.messages_purchased
+        user.package_type = payment.package_type
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Payment verified! Added {payment.messages_purchased} messages.",
+            "quota": {
+                "messages_remaining": user.messages_remaining,
+                "package_type": user.package_type
+            }
+        }
+    finally:
+        db.close()
+
+@app.get("/api/user/quota/{user_id}")
+async def get_user_quota_endpoint(user_id: str):
+    """Get user's remaining message quota."""
+    db = SessionLocal()
+    try:
+        quota = get_user_quota(db, user_id)
+        return {
+            "success": True,
+            **quota
+        }
+    finally:
+        db.close()
+
+@app.get("/api/user/profile/{user_id}")
+async def get_user_profile(user_id: str):
+    """Get user profile including WhatsApp status."""
+    db = SessionLocal()
+    try:
+        user = get_user_by_clerk_id(db, user_id)
+        return {
+            "success": True,
+            "user": {
+                "id": user.clerk_user_id,
+                "email": user.email,
+                "name": user.name,
+                "package_type": user.package_type,
+                "messages_remaining": user.messages_remaining,
+                "total_sent": user.total_messages_sent,
+                "whatsapp_linked": user.whatsapp_linked
+            }
+        }
+    finally:
+        db.close()
+
 # =============================================================================
 # Entry Point
 # =============================================================================
@@ -569,6 +844,7 @@ if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting VoteFlow AI Backend...")
     print("🔐 Security: Rate limiting & input validation enabled")
+    print("💳 Payments: Razorpay integration active")
     print("📡 API: http://localhost:8000")
     print("📖 Docs: http://localhost:8000/docs")
     uvicorn.run(app, host="0.0.0.0", port=8000)

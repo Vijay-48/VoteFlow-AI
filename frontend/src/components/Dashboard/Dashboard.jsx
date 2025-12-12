@@ -18,6 +18,13 @@ function Dashboard() {
     const [qrCodeUrl, setQrCodeUrl] = useState(null)
     const [showQrModal, setShowQrModal] = useState(false)
 
+    // Multi-user state
+    const [userQuota, setUserQuota] = useState({ messages_remaining: 0, package_type: 'starter' })
+    const [whatsappLinked, setWhatsappLinked] = useState(false)
+    const [showVncModal, setShowVncModal] = useState(false)
+    const [vncUrl, setVncUrl] = useState(null)
+    const userId = 'demo-user' // TODO: Get from Clerk auth
+
     // Refs
     const wsRef = useRef(null)
     const terminalRef = useRef(null)

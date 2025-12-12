@@ -6,16 +6,19 @@ services:
     container_name: voteflow_backend
     ports:
       - "8000:8000"
+      - "6080:6080" # noVNC for WhatsApp QR scanning
     volumes:
       - ./backend/uploads:/app/uploads
-      - chrome_profile:/data/chrome-profile # Persistent Chrome profile for WhatsApp session
+      - chrome_profiles:/data/chrome-profiles # Per-user Chrome profiles for WhatsApp
+      - db_data:/app/data # Database persistence
     env_file:
       - ./backend/.env
     environment:
-      - CHROME_USER_DATA_DIR=/data/chrome-profile
+      - CHROME_PROFILES_BASE=/data/chrome-profiles
     restart: always
     # shm_size is CRITICAL for Chrome to run reliably in Docker
     shm_size: "1gb"
 
 volumes:
-  chrome_profile:
+  chrome_profiles:
+  db_data:

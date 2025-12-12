@@ -42,11 +42,14 @@ class CampaignRunner:
     def __init__(
         self,
         campaign_id: str,
+        user_id: str = None,  # Clerk user ID for per-user profiles
         message_template: Optional[str] = None,
         broadcast_callback: Optional[Callable] = None,
-        use_ai: bool = True
+        use_ai: bool = True,
+        quota_remaining: int = 0  # Message quota limit
     ):
         self.campaign_id = campaign_id
+        self.user_id = user_id
         self.base_message = message_template or self._default_message()
         self.broadcast = broadcast_callback or (lambda x: None)
         self.driver = None
@@ -54,6 +57,8 @@ class CampaignRunner:
         self.is_paused = False
         self.should_stop = False
         self.use_ai = use_ai
+        self.quota_remaining = quota_remaining
+        self.messages_sent_this_session = 0
         
         # Statistics
         self.stats = {
@@ -184,8 +189,13 @@ OUTPUT (just the message):"""
                 chrome_options.binary_location = chrome_bin
                 print(f"[INFO] Using Chrome binary: {chrome_bin}")
             
-            # Persistent profile directory (mounted volume in Docker)
-            user_data_dir = os.getenv("CHROME_USER_DATA_DIR", "/data/chrome-profile")
+            # Per-user profile directory for WhatsApp session isolation
+            base_profile_dir = os.getenv("CHROME_PROFILES_BASE", "/data/chrome-profiles")
+            if self.user_id:
+                user_data_dir = os.path.join(base_profile_dir, self.user_id)
+                os.makedirs(user_data_dir, exist_ok=True)
+            else:
+                user_data_dir = os.path.join(base_profile_dir, "default")
             chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
             print(f"[INFO] Using Chrome profile: {user_data_dir}")
         else:
